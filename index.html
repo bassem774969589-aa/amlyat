@@ -1,1 +1,765 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام الاستخبارات التكتيكي المغلق</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Tajawal', system-ui, sans-serif; background:#050b1a; color:#cfe3f5; }
+  .card { background:linear-gradient(160deg,#0b1729,#0f2038); border:1px solid #1e3a5f; border-radius:12px; }
+  .btn { transition:all .2s; }
+  .btn:hover { transform:translateY(-1px); }
+  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:#0b1729}::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:4px}
+  input,select,textarea{background:#0b1729!important;color:#cfe3f5!important;border:1px solid #1e3a5f!important}
+  input:focus,select:focus,textarea:focus{border-color:#00d4ff!important;outline:none;box-shadow:0 0 0 2px rgba(0,212,255,.2)}
+  .badge{padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700}
+  .risk-critical{background:rgba(255,45,85,.2);color:#ff2d55;border:1px solid rgba(255,45,85,.4)}
+  .risk-high{background:rgba(240,180,0,.15);color:#f0b400;border:1px solid rgba(240,180,0,.4)}
+  .risk-med{background:rgba(0,212,255,.12);color:#00d4ff;border:1px solid rgba(0,212,255,.3)}
+  .risk-low{background:rgba(0,226,138,.12);color:#00e28a;border:1px solid rgba(0,226,138,.3)}
+  .glow-danger{box-shadow:0 0 25px rgba(255,45,85,.6),inset 0 0 15px rgba(255,45,85,.15);animation:pulseDanger 1.4s infinite}
+  @keyframes pulseDanger{0%,100%{box-shadow:0 0 20px rgba(255,45,85,.5)}50%{box-shadow:0 0 40px rgba(255,45,85,.9)}}
+  .ticker-wrap{overflow:hidden;white-space:nowrap}.ticker{display:inline-block;padding-left:100%;animation:ticker 25s linear infinite}
+  @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+  .tab-active{background:#0f2038;border-bottom:2px solid #00d4ff;color:#00d4ff}
+  @media print{body{background:#fff!important;color:#000!important}.no-print{display:none!important}.card{background:#fff!important;border:1px solid #ccc!important;color:#000!important}*{color:#000!important}}
+</style>
+</head>
+<body class="min-h-screen">
 
+<!-- شاشة الدخول -->
+<div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-tac-bg" style="background:#050b1a">
+  <div class="absolute inset-0 opacity-10" style="background-image:radial-gradient(circle at 25% 25%,#00d4ff 1px,transparent 1px);background-size:40px 40px"></div>
+  <div class="card p-10 w-full max-w-md relative z-10" style="border-color:#1e3a5f">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style="background:#0f2038;border:2px solid #00d4ff">
+        <i class="fa-solid fa-shield-halved text-4xl" style="color:#00d4ff"></i>
+      </div>
+      <h1 class="text-2xl font-black text-white tracking-widest">نظام الاستخبارات التكتيكي</h1>
+      <p class="text-sm mt-1" style="color:#6b8cae">نظام التحليل الاستخباراتي والإنذار المبكر المغلق</p>
+      <p class="text-xs mt-2 font-bold" style="color:#ff2d55"><i class="fa-solid fa-lock"></i> نظام مغلق - الوصول المصرح فقط</p>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs font-bold" style="color:#6b8cae">اسم المستخدم</label>
+        <input id="loginUser" type="text" class="w-full mt-1 p-3 rounded-lg" placeholder="أدخل اسم المستخدم">
+      </div>
+      <div>
+        <label class="text-xs font-bold" style="color:#6b8cae">كلمة المرور</label>
+        <input id="loginPass" type="password" class="w-full mt-1 p-3 rounded-lg" placeholder="••••••••">
+      </div>
+      <div id="loginError" class="text-xs hidden text-center font-bold" style="color:#ff2d55"></div>
+      <button id="loginBtn" class="btn w-full font-black py-3 rounded-lg" style="background:#00d4ff;color:#050b1a">
+        <i class="fa-solid fa-right-to-bracket ml-2"></i> تسجيل الدخول الآمن
+      </button>
+      
+      <!-- بيانات الدخول الافتراضية -->
+      <div class="text-center text-xs pt-2 border-t mt-4" style="color:#6b8cae;border-color:#1e3a5f">
+        <p class="mb-1">بيانات الدخول الافتراضية للمدير:</p>
+        <p>المستخدم: <span class="font-mono" style="color:#f0b400">commander</span></p>
+        <p>المرور: <span class="font-mono" style="color:#f0b400">admin123</span></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- واجهة النظام -->
+<div id="app" class="hidden">
+  <header class="sticky top-0 z-40" style="background:#0b1729;border-bottom:1px solid #1e3a5f">
+    <div class="flex items-center justify-between px-4 py-3">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-shield-halved text-xl" style="color:#00d4ff"></i>
+        <div>
+          <h1 class="font-black text-white text-lg leading-tight">نظام الاستخبارات التكتيكي</h1>
+          <p class="text-[10px]" style="color:#6b8cae">مستوى السرية: <span class="font-bold" style="color:#ff2d55">سري للغاية</span></p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <span class="hidden md:inline" style="color:#6b8cae"><i class="fa-solid fa-clock ml-1"></i><span id="clock"></span></span>
+        <span class="badge risk-med" id="roleBadge"><i class="fa-solid fa-user-shield"></i> <span id="roleName"></span></span>
+        <span class="hidden md:inline" style="color:#6b8cae" id="userName"></span>
+        <button id="logoutBtn" class="btn" style="color:#ff2d55" title="خروج"><i class="fa-solid fa-power-off"></i></button>
+      </div>
+    </div>
+    <div id="threatBanner" class="hidden px-4 py-2 glow-danger" style="background:linear-gradient(to left,rgba(120,0,20,.6),rgba(255,45,85,.3));border-top:1px solid #ff2d55;border-bottom:1px solid #ff2d55">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-triangle-exclamation text-xl animate-pulse" style="color:#ff2d55"></i>
+        <div class="ticker-wrap flex-1"><div class="ticker font-bold text-sm" style="color:#ff2d55" id="threatText"></div></div>
+      </div>
+    </div>
+  </header>
+  <nav class="px-4 overflow-x-auto no-print" style="background:#0f2038;border-bottom:1px solid #1e3a5f">
+    <div class="flex gap-1 min-w-max" id="navTabs"></div>
+  </nav>
+  <main class="p-4 max-w-7xl mx-auto" id="mainContent"></main>
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  var DB_KEY = 'citads_db_final';
+  var SESSION_KEY = 'citads_session_final';
+  var DB = null;
+  var session = null;
+  var currentTab = 'dashboard';
+
+  /* ---------- قاعدة البيانات الافتراضية ---------- */
+  function defaultDB(){
+    return {
+      users: [
+        { id:'U001', username:'commander', pass:'admin123', name:'المدير العام', role:'admin', active:true, sector:'الكل' }
+      ],
+      targets: [],
+      fieldReports: [],
+      alerts: [],
+      collectionChecklist: {
+        'القطاع الشمالي': { c2:false, engineer:false, subterranean:false, psyops:false, logistics:false },
+        'القطاع الشرقي': { c2:false, engineer:false, subterranean:false, psyops:false, logistics:false },
+        'القطاع الجنوبي': { c2:false, engineer:false, subterranean:false, psyops:false, logistics:false },
+        'القطاع الغربي': { c2:false, engineer:false, subterranean:false, psyops:false, logistics:false }
+      },
+      guidance: {}
+    };
+  }
+
+  function loadDB(){
+    try {
+      var raw = localStorage.getItem(DB_KEY);
+      if(!raw){ 
+        DB = defaultDB(); 
+        saveDB(); 
+        return; 
+      }
+      var parsed = JSON.parse(raw);
+      if(!parsed || !Array.isArray(parsed.users) || parsed.users.length === 0){
+        DB = defaultDB(); saveDB(); return;
+      }
+      DB = parsed;
+      if(!DB.targets) DB.targets = [];
+      if(!DB.fieldReports) DB.fieldReports = [];
+      if(!DB.alerts) DB.alerts = [];
+      if(!DB.collectionChecklist) DB.collectionChecklist = defaultDB().collectionChecklist;
+      if(!DB.guidance) DB.guidance = {};
+    } catch(e){
+      console.error('خطأ في تحميل البيانات:', e);
+      DB = defaultDB(); saveDB();
+    }
+  }
+  function saveDB(){ try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){ console.error('خطأ في الحفظ',e); } }
+
+  /* ---------- المصادقة ---------- */
+  function doLogin(){
+    try {
+      var uEl = document.getElementById('loginUser');
+      var pEl = document.getElementById('loginPass');
+      var errEl = document.getElementById('loginError');
+      var u = (uEl.value||'').trim();
+      var p = (pEl.value||'').trim();
+      if(!u || !p){
+        errEl.textContent = 'أدخل اسم المستخدم وكلمة المرور.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      var user = DB.users.find(function(x){ return x.username===u && x.pass===p; });
+      if(!user){
+        errEl.textContent = 'بيانات دخول غير صحيحة.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if(!user.active){
+        errEl.textContent = 'الحساب محظور. تواصل مع المدير.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      errEl.classList.add('hidden');
+      session = { userId:user.id, role:user.role, name:user.name, sector:user.sector, loginAt:Date.now() };
+      try{ localStorage.setItem(SESSION_KEY, JSON.stringify(session)); }catch(e){}
+      bootApp();
+    } catch(e){
+      console.error('خطأ في الدخول:', e);
+      var errEl = document.getElementById('loginError');
+      if(errEl){ errEl.textContent = 'خطأ تقني: ' + e.message; errEl.classList.remove('hidden'); }
+    }
+  }
+
+  function doLogout(){
+    if(!confirm('تأكيد تسجيل الخروج الآمن؟')) return;
+    try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+    session = null;
+    location.reload();
+  }
+
+  function restoreSession(){
+    try {
+      var raw = localStorage.getItem(SESSION_KEY);
+      if(!raw) return false;
+      var s = JSON.parse(raw);
+      var u = DB.users.find(function(x){ return x.id===s.userId && x.active; });
+      if(!u) return false;
+      session = { userId:u.id, role:u.role, name:u.name, sector:u.sector, loginAt:s.loginAt||Date.now() };
+      return true;
+    } catch(e){ return false; }
+  }
+
+  /* ---------- إقلاع النظام ---------- */
+  function bootApp(){
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('roleName').textContent = session.role==='admin' ? 'قائد / مدير عام' : 'مصدر ميداني';
+    document.getElementById('userName').textContent = session.name;
+    document.getElementById('roleBadge').className = 'badge ' + (session.role==='admin'?'risk-high':'risk-med');
+    startClock();
+    renderNav();
+    runAnalysisEngine();
+    navigate(currentTab);
+    setInterval(function(){
+      runAnalysisEngine();
+      if(currentTab==='dashboard'||currentTab==='threats') navigate(currentTab);
+      else refreshThreatBanner();
+    }, 30000);
+  }
+
+  function startClock(){
+    function tick(){
+      var el = document.getElementById('clock');
+      if(el) el.textContent = new Date().toLocaleString('ar-EG',{hour12:false});
+    }
+    tick(); setInterval(tick,1000);
+  }
+
+  /* ---------- القوائم ---------- */
+  var TABS = {
+    dashboard:  { icon:'fa-gauge-high', label:'لوحة القيادة', roles:['admin','field'] },
+    targets:    { icon:'fa-crosshairs', label:'سجل العناصر', roles:['admin','field'] },
+    reports:    { icon:'fa-file-lines', label:'التقارير الميدانية', roles:['admin','field'] },
+    collection: { icon:'fa-list-check', label:'موجهات الجمع', roles:['admin','field'] },
+    threats:    { icon:'fa-triangle-exclamation', label:'الإنذار المبكر', roles:['admin'] },
+    users:      { icon:'fa-users-gear', label:'إدارة المستخدمين', roles:['admin'] }
+  };
+
+  function renderNav(){
+    var nav = document.getElementById('navTabs');
+    nav.innerHTML = '';
+    Object.keys(TABS).forEach(function(key){
+      var cfg = TABS[key];
+      if(cfg.roles.indexOf(session.role)===-1) return;
+      var b = document.createElement('button');
+      b.className = 'px-5 py-3 text-sm font-bold transition ' + (currentTab===key?'tab-active':'');
+      b.style.color = currentTab===key ? '#00d4ff' : '#6b8cae';
+      b.innerHTML = '<i class="fa-solid '+cfg.icon+' ml-2"></i>'+cfg.label;
+      b.id = 'tab_'+key;
+      b.onclick = function(){ navigate(key); };
+      nav.appendChild(b);
+    });
+  }
+
+  function navigate(tab){
+    currentTab = tab;
+    Object.keys(TABS).forEach(function(k){
+      var el = document.getElementById('tab_'+k);
+      if(!el) return;
+      if(tab===k){ el.classList.add('tab-active'); el.style.color='#00d4ff'; }
+      else { el.classList.remove('tab-active'); el.style.color='#6b8cae'; }
+    });
+    var c = document.getElementById('mainContent');
+    c.innerHTML = '';
+    if(tab==='dashboard') c.innerHTML = viewDashboard();
+    if(tab==='targets') c.innerHTML = viewTargets();
+    if(tab==='reports') c.innerHTML = viewReports();
+    if(tab==='collection') c.innerHTML = viewCollection();
+    if(tab==='threats') c.innerHTML = viewThreats();
+    if(tab==='users') c.innerHTML = viewUsers();
+    refreshThreatBanner();
+  }
+
+  /* ---------- محرك التحليل ---------- */
+  function runAnalysisEngine(){
+    try {
+      var sectors = ['القطاع الشمالي','القطاع الشرقي','القطاع الجنوبي','القطاع الغربي'];
+      var alerts = [];
+      sectors.forEach(function(sec){
+        var tgts = DB.targets.filter(function(t){ return t.sector===sec; });
+        var reps = DB.fieldReports.filter(function(r){ return r.sector===sec && (Date.now()-r.at) < 7*24*3600000; });
+        var score = 0; var reasons = [];
+        var critical = tgts.filter(function(t){ return t.threat==='critical' && t.status==='نشط'; });
+        if(critical.length){ score += 40; reasons.push('عناصر عالية الخطورة نشطة ('+critical.length+')'); }
+        var leaveIssues = tgts.filter(function(t){ return (t.leaves||'').indexOf('مكثف')>-1 || (t.leaves||'').indexOf('غير منتظم')>-1; });
+        if(leaveIssues.length){ score += 15; reasons.push('إجازات مكثفة/غير منتظمة'); }
+        var sub = reps.filter(function(r){ return r.category==='subterranean' || r.category==='engineer'; });
+        if(sub.length){ score += sub.length*10; reasons.push('نشاط أنفاق/ألغام مرصود'); }
+        var finStress = tgts.filter(function(t){ return (t.finances||'').indexOf('متأخر')>-1 || (t.finances||'').indexOf('ديون')>-1; });
+        if(finStress.length){ score += 10; reasons.push('ضغوط مالية على العناصر'); }
+        var weak = tgts.filter(function(t){ return t.weakness && (t.weakness||'').indexOf('جيد')===-1; });
+        if(weak.length){ score += 5; reasons.push('ثغرات شخصية قابلة للاستغلال'); }
+        var highReps = reps.filter(function(r){ return r.severity==='critical' || r.severity==='high'; });
+        if(highReps.length){ score += highReps.length*8; reasons.push('تقارير ميدانية عالية الخطورة'); }
+        if(score >= 30){
+          alerts.push({ sector:sec, score:score, reasons:reasons, level: score>=60?'critical':score>=45?'high':'med' });
+        }
+      });
+      DB.alerts = alerts;
+      var guidance = {};
+      sectors.forEach(function(sec){
+        var reps = DB.fieldReports.filter(function(r){ return r.sector===sec; });
+        if(reps.length < 2){
+          guidance[sec] = 'تنبيه ميداني: نقص حاد في المعلومات — يرجى التركيز عاجلاً على كشف نقاط التهوية والفتحات السرية والتحصينات بالقطاع.';
+        }
+      });
+      DB.guidance = guidance;
+      saveDB();
+    } catch(e){ console.error('خطأ في التحليل', e); }
+  }
+
+  function refreshThreatBanner(){
+    var banner = document.getElementById('threatBanner');
+    var txt = document.getElementById('threatText');
+    if(!banner || !txt) return;
+    if(session.role!=='admin' || !DB.alerts.length){ banner.classList.add('hidden'); return; }
+    banner.classList.remove('hidden');
+    var sorted = DB.alerts.slice().sort(function(a,b){ return b.score-a.score; });
+    var top = sorted[0];
+    var levelAr = top.level==='critical'?'حرج جداً':top.level==='high'?'عالي':'متوسط';
+    txt.textContent = '⚠ إنذار '+levelAr+' — '+top.sector+': '+top.reasons.join(' | ')+' — درجة الخطورة '+top.score+'/100 — يُنصح برفع الجاهزية الفورية وإعادة تقييم الموقف.';
+  }
+
+  /* ---------- الواجهات ---------- */
+  function statCard(label,val,icon,color){
+    return '<div class="card p-4"><div class="flex items-center justify-between"><div><p class="text-xs font-bold" style="color:#6b8cae">'+label+'</p><p class="text-3xl font-black mt-1" style="color:'+color+'">'+val+'</p></div><i class="fa-solid '+icon+' text-3xl opacity-40" style="color:'+color+'"></i></div></div>';
+  }
+
+  function viewDashboard(){
+    runAnalysisEngine();
+    var totalTargets = DB.targets.length;
+    var criticals = DB.targets.filter(function(t){ return t.threat==='critical'; }).length;
+    var activeAlerts = DB.alerts.length;
+    var reports = DB.fieldReports.length;
+    var isAdmin = session.role==='admin';
+    var guidance = DB.guidance[session.sector];
+
+    var sectorRows = ['القطاع الشمالي','القطاع الشرقي','القطاع الجنوبي','القطاع الغربي'].map(function(sec){
+      var a = null;
+      for(var i=0;i<DB.alerts.length;i++){ if(DB.alerts[i].sector===sec){ a = DB.alerts[i]; break; } }
+      var score = a ? a.score : 0;
+      var lvl = a ? a.level : 'low';
+      var color = lvl==='critical'?'#ff2d55':lvl==='high'?'#f0b400':lvl==='med'?'#00d4ff':'#00e28a';
+      return '<div class="flex items-center justify-between p-3" style="border-bottom:1px solid #1e3a5f"><span class="font-bold text-sm">'+sec+'</span><div class="flex items-center gap-3" style="width:66%"><div class="flex-1 rounded-full h-2 overflow-hidden" style="background:#050b1a"><div class="h-full" style="width:'+Math.min(score,100)+'%;background:'+color+'"></div></div><span class="text-xs font-mono w-12 text-left">'+score+'/100</span></div></div>';
+    }).join('');
+
+    var recentReports = DB.fieldReports.slice(-4).reverse().map(function(r){
+      var bColor = r.severity==='critical'?'#ff2d55':r.severity==='high'?'#f0b400':'#00d4ff';
+      return '<div class="p-2 rounded" style="background:#050b1a;border-right:2px solid '+bColor+'"><div class="flex justify-between text-xs"><span class="font-bold">'+r.sector+'</span><span style="color:#6b8cae">'+new Date(r.at).toLocaleTimeString('ar-EG')+'</span></div><p class="text-sm mt-1">'+r.content+'</p></div>';
+    }).join('') || '<p class="text-sm" style="color:#6b8cae">لا توجد تقارير.</p>';
+
+    var alertsHtml = '';
+    if(isAdmin && DB.alerts.length){
+      alertsHtml = '<div class="card p-4 mt-4 glow-danger" style="border:2px solid #ff2d55"><h3 class="font-bold mb-3" style="color:#ff2d55"><i class="fa-solid fa-triangle-exclamation ml-1"></i> تقدير موقف تكيفي — إنذارات نشطة</h3><div class="space-y-2">';
+      DB.alerts.forEach(function(a){
+        var levelAr = a.level==='critical'?'حرج':a.level==='high'?'عالي':'متوسط';
+        alertsHtml += '<div class="p-3 rounded" style="background:#050b1a;border-right:4px solid #ff2d55"><div class="flex justify-between"><span class="font-bold" style="color:#ff2d55">'+a.sector+'</span><span class="badge '+(a.level==='critical'?'risk-critical':a.level==='high'?'risk-high':'risk-med')+'">'+levelAr+' — '+a.score+'/100</span></div><ul class="text-xs mt-2 list-disc list-inside" style="color:#6b8cae">'+a.reasons.map(function(r){return '<li>'+r+'</li>';}).join('')+'</ul><div class="mt-2 flex gap-2 no-print"><button onclick="CITADS.shareAlert(\''+a.sector+'\', \''+a.level+'\', '+a.score+', \''+a.reasons.join('، ')+'\')" class="btn text-xs px-2 py-1 rounded" style="background:#15803d;color:#fff"><i class="fa-brands fa-whatsapp"></i> مشاركة</button><button onclick="window.print()" class="btn text-xs px-2 py-1 rounded" style="background:#0f2038;border:1px solid #1e3a5f"><i class="fa-solid fa-print"></i> طباعة</button></div></div>';
+      });
+      alertsHtml += '</div></div>';
+    }
+
+    var guidanceHtml = '';
+    if(!isAdmin){
+      guidanceHtml = '<div class="card p-4 mb-4" style="border-right:4px solid #00d4ff"><div class="flex items-start gap-3"><i class="fa-solid fa-bullhorn text-xl mt-1" style="color:#00d4ff"></i><div><h3 class="font-bold mb-1" style="color:#00d4ff">إرشادات ميدانية ديناميكية لقطاعك</h3><p class="text-sm" style="color:#6b8cae">'+(guidance || 'لا توجد تنبيهات جديدة.')+'</p></div></div></div>';
+    }
+
+    return '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">'
+      + statCard('العناصر المسجلة', totalTargets, 'fa-crosshairs', '#00d4ff')
+      + statCard('عناصر عالية الخطورة', criticals, 'fa-skull', '#ff2d55')
+      + statCard('إنذارات نشطة', activeAlerts, 'fa-bell', '#f0b400')
+      + statCard('تقارير ميدانية', reports, 'fa-file-lines', '#00e28a')
+      + '</div>'
+      + guidanceHtml
+      + '<div class="grid md:grid-cols-2 gap-4">'
+      + '<div class="card p-4"><h3 class="font-bold text-white mb-3"><i class="fa-solid fa-chart-line ml-1" style="color:#00d4ff"></i> مؤشر خطورة القطاعات</h3>'+sectorRows+'</div>'
+      + '<div class="card p-4"><h3 class="font-bold text-white mb-3"><i class="fa-solid fa-satellite-dish ml-1" style="color:#00d4ff"></i> آخر التقارير الميدانية</h3><div class="space-y-2">'+recentReports+'</div></div>'
+      + '</div>'
+      + alertsHtml;
+  }
+
+  function riskBadge(t){ return t==='critical'?'risk-critical':t==='high'?'risk-high':t==='med'?'risk-med':'risk-low'; }
+  function riskText(t){ return t==='critical'?'حرج':t==='high'?'عالي':t==='med'?'متوسط':'منخفض'; }
+
+  function viewTargets(){
+    var isAdmin = session.role==='admin';
+    var visible = isAdmin ? DB.targets : DB.targets.filter(function(t){ return t.sector===session.sector; });
+    var rows = visible.map(function(t){
+      return '<tr style="border-bottom:1px solid #1e3a5f" onmouseover="this.style.background=\'rgba(15,32,56,.5)\'" onmouseout="this.style.background=\'transparent\'">'
+        + '<td class="p-2 text-xs font-mono" style="color:#6b8cae">'+t.id+'</td>'
+        + '<td class="p-2"><p class="font-bold text-sm">'+t.name+'</p><p class="text-xs" style="color:#6b8cae">'+t.rank+'</p></td>'
+        + '<td class="p-2 text-xs">'+t.sector+'</td>'
+        + '<td class="p-2"><span class="badge '+riskBadge(t.threat)+'">'+riskText(t.threat)+'</span></td>'
+        + '<td class="p-2 text-xs">'+t.status+'</td>'
+        + '<td class="p-2 text-xs max-w-xs truncate" style="color:#6b8cae" title="'+(t.weakness||'')+'">'+(t.weakness||'')+'</td>'
+        + '<td class="p-2"><div class="flex gap-1">'
+        + '<button onclick="CITADS.viewTarget(\''+t.id+'\')" class="btn px-2" style="color:#00d4ff" title="عرض"><i class="fa-solid fa-eye"></i></button>'
+        + (isAdmin ? '<button onclick="CITADS.editTarget(\''+t.id+'\')" class="btn px-2" style="color:#f0b400" title="تعديل"><i class="fa-solid fa-pen"></i></button><button onclick="CITADS.deleteTarget(\''+t.id+'\')" class="btn px-2" style="color:#ff2d55" title="حذف"><i class="fa-solid fa-trash"></i></button>' : '')
+        + '<button onclick="CITADS.shareTarget(\''+t.id+'\')" class="btn px-2" style="color:#22c55e" title="مشاركة عبر واتساب"><i class="fa-brands fa-whatsapp"></i></button>'
+        + '</div></td></tr>';
+    }).join('');
+
+    return '<div class="flex justify-between items-center mb-4"><h2 class="text-xl font-black text-white"><i class="fa-solid fa-crosshairs ml-2" style="color:#00d4ff"></i> سجل العناصر والملفات الشخصية</h2><div class="flex gap-2 no-print"><button onclick="window.print()" class="btn px-3 py-2 rounded text-sm" style="background:#0f2038;border:1px solid #1e3a5f"><i class="fa-solid fa-print ml-1"></i> طباعة</button><button onclick="CITADS.openTargetForm()" class="btn px-3 py-2 rounded text-sm font-bold" style="background:#00d4ff;color:#050b1a"><i class="fa-solid fa-plus ml-1"></i> إضافة عنصر</button></div></div>'
+      + (!isAdmin?'<p class="text-xs mb-2" style="color:#6b8cae"><i class="fa-solid fa-lock"></i> ترى فقط عناصر قطاعك: <b>'+session.sector+'</b></p>':'')
+      + '<div class="card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-right"><thead style="background:#0f2038;color:#6b8cae" class="text-xs"><tr><th class="p-2">المعرف</th><th class="p-2">الاسم والرتبة</th><th class="p-2">القطاع</th><th class="p-2">الخطر</th><th class="p-2">الحالة</th><th class="p-2">الثغرات</th><th class="p-2">إجراءات</th></tr></thead><tbody>'
+      + (rows || '<tr><td colspan="7" class="p-4 text-center" style="color:#6b8cae">لا توجد بيانات.</td></tr>')
+      + '</tbody></table></div></div>';
+  }
+
+  function viewTarget(id){
+    var t = null;
+    for(var i=0;i<DB.targets.length;i++){ if(DB.targets[i].id===id){ t = DB.targets[i]; break; } }
+    if(!t) return;
+    var fields = [['المعرف',t.id],['الاسم واللقب الحركي',t.name],['الرتبة',t.rank],['القطاع',t.sector],['المستحقات والوضع المالي',t.finances],['الإجازات ومقرات التواجد',t.leaves],['المهام الموكلة',t.tasks],['نقاط الضعف والثغرات',t.weakness],['مستوى الخطر',riskText(t.threat)],['حالة العنصر',t.status],['إجراء التعامل المقترح',t.action]];
+    var html = '<div class="p-6"><h3 class="text-lg font-black text-white mb-4"><i class="fa-solid fa-id-card ml-2" style="color:#00d4ff"></i> '+t.name+'</h3><div class="space-y-2">';
+    fields.forEach(function(f){
+      html += '<div class="flex justify-between p-2" style="border-bottom:1px solid #1e3a5f"><span class="text-sm" style="color:#6b8cae">'+f[0]+'</span><span class="font-bold text-sm">'+(f[1]||'—')+'</span></div>';
+    });
+    html += '</div><div class="flex gap-2 mt-4 no-print"><button onclick="CITADS.shareTarget(\''+t.id+'\')" class="btn px-3 py-2 rounded text-sm" style="background:#15803d;color:#fff"><i class="fa-brands fa-whatsapp"></i> مشاركة عبر واتساب</button><button onclick="CITADS.closeModal()" class="btn px-4 py-2 rounded text-sm" style="background:#0f2038;border:1px solid #1e3a5f">إغلاق</button></div></div>';
+    openModal(html);
+  }
+
+  function formInput(id,label,val){
+    return '<div><label class="text-xs" style="color:#6b8cae">'+label+'</label><input id="'+id+'" value="'+(val||'').replace(/"/g,'&quot;')+'" class="w-full mt-1 p-2 rounded"></div>';
+  }
+
+  function openTargetForm(existing){
+    var t = existing || { id:'T'+Math.floor(1000+Math.random()*9000), name:'', rank:'', sector:'القطاع الشمالي', finances:'', leaves:'', location:'', tasks:'', weakness:'', threat:'med', status:'نشط', action:'' };
+    var isEdit = !!existing;
+    if(!isEdit && session.role!=='admin' && session.role!=='field'){ alert('غير مصرح.'); return; }
+    if(isEdit && session.role!=='admin'){ alert('غير مصرح بتعديل العناصر.'); return; }
+    var sectorOpts = ['القطاع الشمالي','القطاع الشرقي','القطاع الجنوبي','القطاع الغربي'].map(function(s){ return '<option '+(s===t.sector?'selected':'')+'>'+s+'</option>'; }).join('');
+    var threatOpts = ['low','med','high','critical'].map(function(s){ return '<option value="'+s+'" '+(s===t.threat?'selected':'')+'>'+riskText(s)+'</option>'; }).join('');
+    var statusOpts = ['نشط','قيد المراقبة','معتقل','منشق','مفقود'].map(function(s){ return '<option '+(s===t.status?'selected':'')+'>'+s+'</option>'; }).join('');
+    openModal('<div class="p-6 max-h-[90vh] overflow-y-auto"><h3 class="text-lg font-black text-white mb-4">'+(isEdit?'تعديل':'إضافة')+' عنصر</h3><div class="grid md:grid-cols-2 gap-3">'
+      + formInput('t_name','الاسم واللقب الحركي', t.name)
+      + formInput('t_rank','الرتبة', t.rank)
+      + '<div><label class="text-xs" style="color:#6b8cae">القطاع</label><select id="t_sector" class="w-full mt-1 p-2 rounded">'+sectorOpts+'</select></div>'
+      + '<div><label class="text-xs" style="color:#6b8cae">مستوى الخطر</label><select id="t_threat" class="w-full mt-1 p-2 rounded">'+threatOpts+'</select></div>'
+      + formInput('t_finances','المستحقات والوضع المالي', t.finances)
+      + formInput('t_leaves','الإجازات ومقرات التواجد', t.leaves)
+      + formInput('t_tasks','المهام الموكلة', t.tasks)
+      + formInput('t_weakness','نقاط الضعف والثغرات', t.weakness)
+      + '<div><label class="text-xs" style="color:#6b8cae">حالة العنصر</label><select id="t_status" class="w-full mt-1 p-2 rounded">'+statusOpts+'</select></div>'
+      + formInput('t_action','إجراء التعامل المقترح', t.action)
+      + '</div><div class="flex gap-2 mt-4"><button onclick="CITADS.saveTarget(\''+t.id+'\','+isEdit+')" class="btn px-4 py-2 rounded font-bold" style="background:#00d4ff;color:#050b1a"><i class="fa-solid fa-save ml-1"></i> حفظ</button><button onclick="CITADS.closeModal()" class="btn px-4 py-2 rounded" style="background:#0f2038;border:1px solid #1e3a5f">إلغاء</button></div></div>');
+  }
+
+  function saveTarget(id, isEdit){
+    var nameEl = document.getElementById('t_name');
+    if(!nameEl || !nameEl.value.trim()){ alert('الاسم مطلوب'); return; }
+    var existing = null;
+    for(var i=0;i<DB.targets.length;i++){ if(DB.targets[i].id===id){ existing = DB.targets[i]; break; } }
+    var t = {
+      id: id,
+      name: nameEl.value.trim(),
+      rank: document.getElementById('t_rank').value.trim(),
+      sector: document.getElementById('t_sector').value,
+      finances: document.getElementById('t_finances').value.trim(),
+      leaves: document.getElementById('t_leaves').value.trim(),
+      location: existing ? (existing.location||'') : '',
+      tasks: document.getElementById('t_tasks').value.trim(),
+      weakness: document.getElementById('t_weakness').value.trim(),
+      threat: document.getElementById('t_threat').value,
+      status: document.getElementById('t_status').value,
+      action: document.getElementById('t_action').value.trim(),
+      entryBy: existing ? existing.entryBy : session.userId,
+      entryAt: existing ? existing.entryAt : Date.now()
+    };
+    if(isEdit){ for(var j=0;j<DB.targets.length;j++){ if(DB.targets[j].id===id){ DB.targets[j]=t; break; } } }
+    else { DB.targets.push(t); }
+    saveDB();
+    closeModal();
+    runAnalysisEngine();
+    navigate('targets');
+  }
+
+  function editTarget(id){
+    if(session.role!=='admin') return;
+    var t = null;
+    for(var i=0;i<DB.targets.length;i++){ if(DB.targets[i].id===id){ t=DB.targets[i]; break; } }
+    if(t) openTargetForm(t);
+  }
+  function deleteTarget(id){
+    if(session.role!=='admin') return;
+    if(!confirm('تأكيد حذف العنصر؟')) return;
+    DB.targets = DB.targets.filter(function(t){ return t.id!==id; });
+    saveDB(); navigate('targets');
+  }
+
+  /* ---------- التقارير ---------- */
+  function categoryLabel(c){
+    return { c2:'قيادة وسيطرة (C2)', engineer:'سلاح الهندسة والألغام', subterranean:'الأنفاق والتحصينات', psyops:'التوجيه المعنوي / حرب نفسية', logistics:'الإمداد واللوجستيات' }[c] || c;
+  }
+
+  function viewReports(){
+    var isAdmin = session.role==='admin';
+    var reports = isAdmin ? DB.fieldReports : DB.fieldReports.filter(function(r){ return r.sector===session.sector; });
+    var html = '<div class="flex justify-between items-center mb-4"><h2 class="text-xl font-black text-white"><i class="fa-solid fa-file-lines ml-2" style="color:#00d4ff"></i> التقارير الميدانية</h2><button onclick="CITADS.openReportForm()" class="btn px-3 py-2 rounded text-sm font-bold no-print" style="background:#00d4ff;color:#050b1a"><i class="fa-solid fa-plus ml-1"></i> تقرير جديد</button></div><div class="space-y-2">';
+    if(!reports.length){ html += '<p class="text-center py-8" style="color:#6b8cae">لا توجد تقارير.</p>'; }
+    else {
+      reports.slice().reverse().forEach(function(r){
+        var bColor = r.severity==='critical'?'#ff2d55':r.severity==='high'?'#f0b400':'#00d4ff';
+        html += '<div class="card p-3" style="border-right:4px solid '+bColor+'"><div class="flex justify-between text-xs mb-1" style="color:#6b8cae"><span><i class="fa-solid fa-location-dot"></i> '+r.sector+' — <b>'+categoryLabel(r.category)+'</b></span><span>'+new Date(r.at).toLocaleString('ar-EG')+'</span></div><p class="text-sm">'+r.content+'</p><div class="flex justify-between items-center mt-2"><span class="badge '+riskBadge(r.severity)+'">'+riskText(r.severity)+'</span>'+(isAdmin?'<button onclick="CITADS.deleteReport(\''+r.id+'\')" class="text-xs no-print" style="color:#ff2d55"><i class="fa-solid fa-trash"></i></button>':'')+'</div></div>';
+      });
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function openReportForm(){
+    var sec = session.role==='admin' ? 'القطاع الشمالي' : session.sector;
+    var sectorOpts = ['القطاع الشمالي','القطاع الشرقي','القطاع الجنوبي','القطاع الغربي'].map(function(s){
+      var dis = (session.role!=='admin' && s!==sec) ? 'disabled' : '';
+      return '<option '+dis+' '+(s===sec?'selected':'')+'>'+s+'</option>';
+    }).join('');
+    openModal('<div class="p-6"><h3 class="text-lg font-black text-white mb-4">تقرير ميداني جديد</h3><div class="space-y-3">'
+      + '<div><label class="text-xs" style="color:#6b8cae">القطاع</label><select id="r_sector" class="w-full mt-1 p-2 rounded">'+sectorOpts+'</select></div>'
+      + '<div><label class="text-xs" style="color:#6b8cae">محور الجمع</label><select id="r_category" class="w-full mt-1 p-2 rounded"><option value="c2">قيادة وسيطرة (C2)</option><option value="engineer">سلاح الهندسة والألغام</option><option value="subterranean">الأنفاق والتحصينات</option><option value="psyops">التوجيه المعنوي / حرب نفسية</option><option value="logistics">الإمداد واللوجستيات</option></select></div>'
+      + '<div><label class="text-xs" style="color:#6b8cae">مستوى الخطورة</label><select id="r_severity" class="w-full mt-1 p-2 rounded"><option value="low">منخفض</option><option value="med" selected>متوسط</option><option value="high">عالي</option><option value="critical">حرج</option></select></div>'
+      + '<div><label class="text-xs" style="color:#6b8cae">محتوى التقرير</label><textarea id="r_content" rows="4" class="w-full mt-1 p-2 rounded"></textarea></div>'
+      + '</div><div class="flex gap-2 mt-4"><button onclick="CITADS.saveReport()" class="btn px-4 py-2 rounded font-bold" style="background:#00d4ff;color:#050b1a"><i class="fa-solid fa-paper-plane ml-1"></i> إرسال</button><button onclick="CITADS.closeModal()" class="btn px-4 py-2 rounded" style="background:#0f2038;border:1px solid #1e3a5f">إلغاء</button></div></div>');
+  }
+
+  function saveReport(){
+    var contentEl = document.getElementById('r_content');
+    if(!contentEl || !contentEl.value.trim()){ alert('المحتوى مطلوب'); return; }
+    var r = {
+      id: 'R'+Date.now().toString().slice(-6),
+      sector: document.getElementById('r_sector').value,
+      category: document.getElementById('r_category').value,
+      severity: document.getElementById('r_severity').value,
+      content: contentEl.value.trim(),
+      by: session.userId,
+      at: Date.now()
+    };
+    if(session.role!=='admin' && r.sector!==session.sector){ alert('غير مصرح بإدخال تقارير لقطاعات أخرى.'); return; }
+    DB.fieldReports.push(r);
+    if(DB.collectionChecklist[r.sector]) DB.collectionChecklist[r.sector][r.category] = true;
+    saveDB();
+    runAnalysisEngine();
+    closeModal();
+    navigate('reports');
+  }
+
+  function deleteReport(id){
+    if(session.role!=='admin') return;
+    if(!confirm('حذف التقرير؟')) return;
+    DB.fieldReports = DB.fieldReports.filter(function(r){ return r.id!==id; });
+    saveDB(); navigate('reports');
+  }
+
+  /* ---------- موجهات الجمع ---------- */
+  function viewCollection(){
+    var sectors = Object.keys(DB.collectionChecklist);
+    var cats = [['c2','قيادة وسيطرة (C2)','fa-tower-broadcast'],['engineer','سلاح الهندسة والألغام','fa-bomb'],['subterranean','الأنفاق والتحصينات','fa-mountain-sun'],['psyops','التوجيه المعنوي والحرب النفسية','fa-bullhorn'],['logistics','الإمداد واللوجستيات','fa-truck-fast']];
+    var html = '<h2 class="text-xl font-black text-white mb-4"><i class="fa-solid fa-list-check ml-2" style="color:#00d4ff"></i> موجهات الجمع الميداني</h2><div class="grid md:grid-cols-2 gap-4">';
+    sectors.forEach(function(sec){
+      var cl = DB.collectionChecklist[sec];
+      var done = Object.keys(cl).filter(function(k){ return cl[k]; }).length;
+      html += '<div class="card p-4"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-white">'+sec+'</h3><span class="text-xs" style="color:#6b8cae">'+done+'/5 مكتمل</span></div><div class="w-full h-1.5 rounded mb-3" style="background:#050b1a"><div class="h-1.5 rounded" style="width:'+(done*20)+'%;background:#00e28a"></div></div><div class="space-y-1">';
+      cats.forEach(function(c){
+        var k = c[0], label = c[1], icon = c[2];
+        html += '<label class="flex items-center justify-between p-2 rounded text-sm cursor-pointer" style="background:transparent" onmouseover="this.style.background=\'#050b1a\'" onmouseout="this.style.background=\'transparent\'"><span><i class="fa-solid '+icon+' ml-2" style="color:#6b8cae"></i>'+label+'</span><input type="checkbox" '+(cl[k]?'checked':'')+' onchange="CITADS.toggleCollection(\''+sec+'\',\''+k+'\',this.checked)" class="w-4 h-4"></label>';
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function toggleCollection(sec,key,val){
+    if(DB.collectionChecklist[sec]) DB.collectionChecklist[sec][key] = val;
+    saveDB();
+  }
+
+  /* ---------- الإنذار المبكر ---------- */
+  function viewThreats(){
+    if(session.role!=='admin') return '<p style="color:#ff2d55">غير مصرح.</p>';
+    runAnalysisEngine();
+    var html = '<h2 class="text-xl font-black text-white mb-4"><i class="fa-solid fa-triangle-exclamation ml-2" style="color:#ff2d55"></i> مركز الإنذار المبكر والتحليل الآلي</h2>';
+    if(!DB.alerts.length){
+      html += '<div class="card p-8 text-center" style="color:#00e28a"><i class="fa-solid fa-check-circle text-4xl mb-2"></i><p class="font-bold">لا توجد إنذارات نشطة حالياً</p><p class="text-xs mt-1" style="color:#6b8cae">المحرك يراقب باستمرار كل 30 ثانية.</p></div>';
+    } else {
+      DB.alerts.forEach(function(a){
+        var levelAr = a.level==='critical'?'حرج جداً':a.level==='high'?'عالي':'متوسط';
+        html += '<div class="card p-4 mb-3" style="border:2px solid '+(a.level==='critical'?'#ff2d55':'#f0b400')+(a.level==='critical'?'\" class=\"glow-danger':'')+'"><div class="flex justify-between items-start mb-2"><h3 class="font-black text-white text-lg">'+a.sector+'</h3><span class="badge '+(a.level==='critical'?'risk-critical':'risk-high')+'">'+levelAr+' — '+a.score+'/100</span></div><p class="text-xs mb-2" style="color:#6b8cae">تقدير الموقف التكيفي:</p><ul class="text-sm list-disc list-inside space-y-1" style="color:#6b8cae">'+a.reasons.map(function(r){return '<li>'+r+'</li>';}).join('')+'</ul><div class="mt-3 p-2 rounded" style="background:#050b1a;border-right:2px solid #00d4ff"><p class="text-xs font-bold mb-1" style="color:#00d4ff">خيارات التعامل المقترحة:</p><ul class="text-xs list-disc list-inside" style="color:#6b8cae"><li>رفع الجاهزية في القطاع المذكور</li><li>تكثيف الاستطلاع الجوي/البري</li><li>مراجعة المصادر والتحقق من المعلومات</li><li>إرسال إرشادات جمع ميدانية عاجلة</li></ul></div><div class="flex gap-2 mt-3 no-print"><button onclick="CITADS.shareAlert(\''+a.sector+'\', \''+a.level+'\', '+a.score+', \''+a.reasons.join('، ')+'\')" class="btn px-3 py-1.5 rounded text-xs" style="background:#15803d;color:#fff"><i class="fa-brands fa-whatsapp"></i> واتساب</button><button onclick="window.print()" class="btn px-3 py-1.5 rounded text-xs" style="background:#0f2038;border:1px solid #1e3a5f"><i class="fa-solid fa-print"></i> طباعة</button><button onclick="CITADS.sendGuidance(\''+a.sector+'\')" class="btn px-3 py-1.5 rounded text-xs font-bold" style="background:#00d4ff;color:#050b1a"><i class="fa-solid fa-bullhorn"></i> إرسال إرشاد</button></div></div>';
+      });
+    }
+    return html;
+  }
+
+  function sendGuidance(sec){
+    var msg = prompt('نص الإرشاد الميداني للقطاع '+sec+':', 'يرجى التركيز عاجلاً على كشف نقاط التهوية والفتحات السرية بالقطاع.');
+    if(!msg) return;
+    DB.guidance[sec] = msg;
+    saveDB();
+    alert('تم إرسال الإرشاد الديناميكي للمستخدمين الميدانيين في هذا القطاع.');
+  }
+
+  /* ---------- إدارة المستخدمين ---------- */
+  function viewUsers(){
+    if(session.role!=='admin') return '<p style="color:#ff2d55">غير مصرح.</p>';
+    var html = '<div class="flex justify-between items-center mb-4"><h2 class="text-xl font-black text-white"><i class="fa-solid fa-users-gear ml-2" style="color:#00d4ff"></i> إدارة المستخدمين</h2><button onclick="CITADS.openUserForm()" class="btn px-3 py-2 rounded text-sm font-bold" style="background:#00d4ff;color:#050b1a"><i class="fa-solid fa-user-plus ml-1"></i> مستخدم جديد</button></div><div class="card overflow-hidden"><table class="w-full text-right"><thead style="background:#0f2038;color:#6b8cae" class="text-xs"><tr><th class="p-2">المعرف</th><th class="p-2">المستخدم</th><th class="p-2">الاسم</th><th class="p-2">الدور</th><th class="p-2">القطاع</th><th class="p-2">الحالة</th><th class="p-2">إجراءات</th></tr></thead><tbody>';
+    DB.users.forEach(function(u){
+      html += '<tr style="border-bottom:1px solid #1e3a5f"><td class="p-2 font-mono text-xs" style="color:#6b8cae">'+u.id+'</td><td class="p-2 font-bold text-sm">'+u.username+'</td><td class="p-2 text-sm">'+u.name+'</td><td class="p-2"><span class="badge '+(u.role==='admin'?'risk-high':'risk-med')+'">'+(u.role==='admin'?'مدير/قائد':'ميداني')+'</span></td><td class="p-2 text-xs">'+u.sector+'</td><td class="p-2"><span class="badge '+(u.active?'risk-low':'risk-critical')+'">'+(u.active?'نشط':'محظور')+'</span></td><td class="p-2"><div class="flex gap-1"><button onclick="CITADS.editUser(\''+u.id+'\')" class="btn px-2" style="color:#f0b400" title="تعديل"><i class="fa-solid fa-pen"></i></button><button onclick="CITADS.toggleUser(\''+u.id+'\')" class="btn px-2" style="color:'+(u.active?'#ff2d55':'#00e28a')+'" title="'+(u.active?'حظر':'تفعيل')+'"><i class="fa-solid '+(u.active?'fa-ban':'fa-check')+'"></i></button><button onclick="CITADS.deleteUser(\''+u.id+'\')" class="btn px-2" style="color:#ff2d55" title="حذف"><i class="fa-solid fa-trash"></i></button></div></td></tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function openUserForm(existing){
+    var u = existing || { id:'U'+Date.now().toString().slice(-5), username:'', pass:'', name:'', role:'field', sector:'القطاع الشمالي', active:true };
+    var isEdit = !!existing;
+    var roleOpts = '<option value="field" '+(u.role==='field'?'selected':'')+'>ميداني / مصدر</option><option value="admin" '+(u.role==='admin'?'selected':'')+'>مدير / قائد</option>';
+    var sectorOpts = ['الكل','القطاع الشمالي','القطاع الشرقي','القطاع الجنوبي','القطاع الغربي'].map(function(s){ return '<option '+(s===u.sector?'selected':'')+'>'+s+'</option>'; }).join('');
+    openModal('<div class="p-6"><h3 class="text-lg font-black text-white mb-4">'+(isEdit?'تعديل':'إضافة')+' مستخدم</h3><div class="space-y-3">'
+      + '<div><label class="text-xs" style="color:#6b8cae">اسم المستخدم</label><input id="u_username" value="'+u.username+'" class="w-full mt-1 p-2 rounded"></div>'
+      + '<div><label class="text-xs" style="color:#6b8cae">كلمة المرور</label><input id="u_pass" value="'+u.pass+'" class="w-full mt-1 p-2 rounded"></div>'
+      + '<div><label class="text-xs" style="color:#6b8cae">الاسم الكامل</label><input id="u_name" value="'+u.name+'" class="w-full mt-1 p-2 rounded"></div>'
+      + '<div><label class="text-xs" style="color:#6b8cae">الدور</label><select id="u_role" class="w-full mt-1 p-2 rounded">'+roleOpts+'</select></div>'
+      + '<div><label class="text-xs" style="color:#6b8cae">القطاع</label><select id="u_sector" class="w-full mt-1 p-2 rounded">'+sectorOpts+'</select></div>'
+      + '</div><div class="flex gap-2 mt-4"><button onclick="CITADS.saveUser(\''+u.id+'\','+isEdit+')" class="btn px-4 py-2 rounded font-bold" style="background:#00d4ff;color:#050b1a"><i class="fa-solid fa-save ml-1"></i> حفظ</button><button onclick="CITADS.closeModal()" class="btn px-4 py-2 rounded" style="background:#0f2038;border:1px solid #1e3a5f">إلغاء</button></div></div>');
+  }
+
+  function saveUser(id, isEdit){
+    var usernameEl = document.getElementById('u_username');
+    var passEl = document.getElementById('u_pass');
+    if(!usernameEl || !passEl || !usernameEl.value.trim() || !passEl.value.trim()){ alert('اسم المستخدم وكلمة المرور مطلوبان'); return; }
+    var existing = null;
+    for(var i=0;i<DB.users.length;i++){ if(DB.users[i].id===id){ existing = DB.users[i]; break; } }
+    var u = {
+      id: id,
+      username: usernameEl.value.trim(),
+      pass: passEl.value.trim(),
+      name: document.getElementById('u_name').value.trim(),
+      role: document.getElementById('u_role').value,
+      sector: document.getElementById('u_sector').value,
+      active: existing ? existing.active : true
+    };
+    if(isEdit){ for(var j=0;j<DB.users.length;j++){ if(DB.users[j].id===id){ DB.users[j]=u; break; } } }
+    else { DB.users.push(u); }
+    saveDB(); closeModal(); navigate('users');
+  }
+
+  function editUser(id){
+    var u = null;
+    for(var i=0;i<DB.users.length;i++){ if(DB.users[i].id===id){ u=DB.users[i]; break; } }
+    if(u) openUserForm(u);
+  }
+  function toggleUser(id){
+    var u = null;
+    for(var i=0;i<DB.users.length;i++){ if(DB.users[i].id===id){ u=DB.users[i]; break; } }
+    if(!u) return;
+    if(u.id===session.userId){ alert('لا يمكنك حظر نفسك.'); return; }
+    u.active = !u.active; saveDB(); navigate('users');
+  }
+  function deleteUser(id){
+    if(id===session.userId){ alert('لا يمكنك حذف حسابك.'); return; }
+    if(!confirm('تأكيد حذف المستخدم؟')) return;
+    DB.users = DB.users.filter(function(x){ return x.id!==id; });
+    saveDB(); navigate('users');
+  }
+
+  /* ---------- النوافذ والمشاركة ---------- */
+  function openModal(html){
+    document.getElementById('modalRoot').innerHTML = '<div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.7)" onclick="if(event.target===this)CITADS.closeModal()"><div class="card w-full max-w-2xl" style="border-color:#1e3a5f">'+html+'</div></div>';
+  }
+  function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+  
+  function shareWhatsApp(text){ 
+    window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank'); 
+  }
+
+  function shareTarget(id){
+    var t = null;
+    for(var i=0;i<DB.targets.length;i++){ if(DB.targets[i].id===id){ t=DB.targets[i]; break; } }
+    if(!t) return;
+
+    var threatAr = riskText(t.threat) + (t.threat==='critical'?' جداً 🔴':t.threat==='high'?' 🟠':t.threat==='med'?' 🟡':' 🟢');
+    
+    var msg = "🚨 *تقرير استخباراتي - النظام المغلق* 🚨\n";
+    msg += "-----------------------------------\n";
+    msg += "👤 *الاسم:* " + t.name + "\n";
+    msg += "🎖️ *الرتبة:* " + (t.rank || 'غير محدد') + "\n";
+    msg += "📍 *القطاع:* " + t.sector + "\n";
+    msg += "🆔 *المعرف:* " + t.id + "\n";
+    msg += "📊 *مستوى الخطر:* " + threatAr + "\n";
+    msg += "⚡ *حالة العنصر:* " + t.status + "\n";
+    msg += "-----------------------------------\n";
+    msg += "💰 *الوضع المالي:* " + (t.finances || 'غير محدد') + "\n";
+    msg += "🏖️ *الإجازات/التواجد:* " + (t.leaves || 'غير محدد') + "\n";
+    msg += "🎯 *المهام الموكلة:* " + (t.tasks || 'غير محدد') + "\n";
+    msg += "⚠️ *نقاط الضعف:* " + (t.weakness || 'غير محدد') + "\n";
+    msg += "-----------------------------------\n";
+    msg += "🛡️ *إجراء التعامل المقترح:*\n";
+    msg += "👉 " + (t.action || 'متابعة دورية') + "\n";
+    msg += "-----------------------------------\n";
+    msg += "🔒 *نظام الاستخبارات التكتيكي المغلق*";
+
+    shareWhatsApp(msg);
+  }
+
+  function shareAlert(sector, level, score, reasons){
+    var lvlAr = level==='critical'?'حرج جداً 🔴':level==='high'?'عالي 🟠':'متوسط 🟡';
+    
+    var msg = "🚨 *إنذار مبكر - النظام المغلق* 🚨\n";
+    msg += "-----------------------------------\n";
+    msg += "📍 *القطاع المستهدف:* " + sector + "\n";
+    msg += "📊 *مستوى التهديد:* " + lvlAr + "\n";
+    msg += "📈 *درجة الخطورة:* " + score + "/100\n";
+    msg += "-----------------------------------\n";
+    msg += "📝 *تقدير الموقف (الأسباب):*\n";
+    msg += "• " + reasons.replace(/،/g, '\n• ') + "\n";
+    msg += "-----------------------------------\n";
+    msg += "🛡️ *خيارات التعامل المقترحة:*\n";
+    msg += "1. رفع الجاهزية في القطاع.\n";
+    msg += "2. تكثيف الاستطلاع الجوي/البري.\n";
+    msg += "3. مراجعة المصادر والتحقق.\n";
+    msg += "4. إرسال إرشادات جمع ميدانية عاجلة.\n";
+    msg += "-----------------------------------\n";
+    msg += "🔒 *نظام الاستخبارات التكتيكي المغلق*";
+
+    shareWhatsApp(msg);
+  }
+
+  /* ---------- التشغيل ---------- */
+  function init(){
+    loadDB();
+    var loginBtn = document.getElementById('loginBtn');
+    var logoutBtn = document.getElementById('logoutBtn');
+    if(loginBtn) loginBtn.addEventListener('click', doLogin);
+    if(logoutBtn) logoutBtn.addEventListener('click', doLogout);
+    var passEl = document.getElementById('loginPass');
+    var userEl = document.getElementById('loginUser');
+    if(passEl) passEl.addEventListener('keypress', function(e){ if(e.key==='Enter') doLogin(); });
+    if(userEl) userEl.addEventListener('keypress', function(e){ if(e.key==='Enter') doLogin(); });
+    if(restoreSession()){ bootApp(); }
+  }
+
+  /* ---------- واجهة برمجة التطبيقات ---------- */
+  window.CITADS = {
+    viewTarget: viewTarget, editTarget: editTarget, deleteTarget: deleteTarget,
+    openTargetForm: openTargetForm, saveTarget: saveTarget, shareTarget: shareTarget, shareAlert: shareAlert,
+    openReportForm: openReportForm, saveReport: saveReport, deleteReport: deleteReport,
+    toggleCollection: toggleCollection,
+    openUserForm: openUserForm, saveUser: saveUser, editUser: editUser,
+    toggleUser: toggleUser, deleteUser: deleteUser,
+    sendGuidance: sendGuidance, closeModal: closeModal, share: shareWhatsApp,
+    openModal: openModal
+  };
+
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', init); }
+  else { init(); }
+
+})();
+</script>
+</body>
+  </html>
